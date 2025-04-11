@@ -88,38 +88,54 @@ def db_status():
 
 @app.post("/sign_up")
 def sign_up(data: user_sign_up_data):
-    with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        
-        # Upload into user database first
-        cur.execute(
-            """
-            INSERT INTO users (email, password, name, phone, role)
-            VALUES (%s, %s, %s, %s, %s)
-            RETURNING user_id;
-            """,
-            (data.email, data.password, data.name, data.phone, 'patient')
-        )
-        
-        # Extract foreign key for patient table
-        user_id = cur.fetchone()[0]
-        
-        # Upload into patients database
-        cur.execute(
-            """
-            INSERT INTO patients (
-                user_id, date_of_birth, blood_type, insurance_id,
-                emergency_contact, emergency_contact_phone
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            
+            # Upload into user database first
+            cur.execute(
+                """
+                INSERT INTO users (email, password, name, phone, role)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING user_id;
+                """,
+                (data.email, data.password, data.name, data.phone, 'patient')
             )
-            VALUES (%s, %s, %s, %s, %s, %s);
-            """,
-            (
-                user_id,
-                data.date_of_birth,
-                data.blood_type,
-                data.insurance_id,
-                data.emergency_contact,
-                data.emergency_contact_phone
+            
+            # Extract foreign key for patient table
+            # Fix: access by column name instead of index since we're using RealDictCursor
+            result = cur.fetchone()
+            user_id = result["user_id"]
+            
+            # Upload into patients database
+            cur.execute(
+                """
+                INSERT INTO patients (
+                    user_id, date_of_birth, blood_type, insurance_id,
+                    emergency_contact, emergency_contact_phone
+                )
+                VALUES (%s, %s, %s, %s, %s, %s);
+                """,
+                (
+                    user_id,
+                    data.date_of_birth,
+                    data.blood_type,
+                    data.insurance_id,
+                    data.emergency_contact,
+                    data.emergency_contact_phone
+                )
             )
+            
+            # Make sure to commit the transaction
+            conn.commit()
+            
+            return {"message": "Registration successful"}
+            
+    except Exception as e:
+        # Roll back the transaction in case of error
+        conn.rollback()
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Registration failed: {str(e)}"}
         )
 
 @app.post("/login")
@@ -180,11 +196,12 @@ def login(data: login_request):
 
     response.set_cookie(
         key="token",
-        value="abc.def.ghi",
+        value=token,
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="lax",
-        max_age=604800
+        max_age=604800,
+        path="/"
     )
 
     return response
