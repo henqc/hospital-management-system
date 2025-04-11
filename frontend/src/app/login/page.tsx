@@ -1,12 +1,31 @@
-import Link from "next/link";
+"use client";
+
+import { HandleLogin } from "@/api/login";
+import { useRouter } from "next/navigation";
 
 export default function Login() {
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+    const password = (form.elements.namedItem("password") as HTMLInputElement)
+      .value;
+    try {
+      await HandleLogin(email, password);
+      router.push("/patient_dash");
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   return (
     <div className="h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md border-2 border-black rounded-lg p-8">
         <h1 className="text-2xl font-bold text-center mb-6">Login</h1>
 
-        <form className="space-y-6">
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label htmlFor="email" className="block font-medium">
               Email
