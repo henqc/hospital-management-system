@@ -120,33 +120,33 @@ def login(data: login_request):
         )
         user = cur.fetchone()
 
-    if user is None or user["password"] != data.password:
-        return JSONResponse(
-            status_code=401,
-            content={"message": "Invalid email or password."}
-        )
-    
-    role_id = None
-    if user["role"] == "patient":
-        cur.execute(
-            """
-            SELECT patient_id FROM patients WHERE user_id = %s
-            """, 
-            (user["user_id"],)
-        )
-        row = cur.fetchone()
-        role_id = row["patient_id"]
-    elif user["role"] == "doctor":
-        cur.execute(
-            """
-            SELECT doctor_id FROM doctors WHERE user_id = %s
-            """, 
-            (user["user_id"],)
-        )
-        row = cur.fetchone()
-        role_id = row["doctor_id"]
-    elif user["role"] == "admin":
+        if user is None or user["password"] != data.password:
+            return JSONResponse(
+                status_code=401,
+                content={"message": "Invalid email or password."}
+            )
+        
         role_id = None
+        if user["role"] == "patient":
+            cur.execute(
+                """
+                SELECT patient_id FROM patients WHERE user_id = %s
+                """, 
+                (user["user_id"],)
+            )
+            row = cur.fetchone()
+            role_id = row["patient_id"]
+        elif user["role"] == "doctor":
+            cur.execute(
+                """
+                SELECT doctor_id FROM doctors WHERE user_id = %s
+                """, 
+                (user["user_id"],)
+            )
+            row = cur.fetchone()
+            role_id = row["doctor_id"]
+        elif user["role"] == "admin":
+            role_id = None
 
     token = generate_JWT({ "user_id": user["user_id"], "role": user["role"], "role_id": role_id })
 
