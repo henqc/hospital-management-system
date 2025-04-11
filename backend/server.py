@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from datetime import date
 import psycopg2
@@ -38,6 +39,11 @@ class user_sign_up_data(BaseModel):
     emergency_contact: str
     emergency_contact_phone: str
     
+    
+class login_request(BaseModel):
+    email: str
+    password: str
+    
 # Ensure connection closes on server shutdown
 @app.on_event("shutdown")
 def shutdown_event():
@@ -57,7 +63,7 @@ def db_status():
 
 @app.post("/sign_up")
 def sign_up(data: user_sign_up_data):
-    with conn.cursor() as cur:
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
         
         # Upload into user database first
         cur.execute(
@@ -90,6 +96,35 @@ def sign_up(data: user_sign_up_data):
                 data.emergency_contact_phone
             )
         )
+
+@app.post("/login")
+def login(data: login_request):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT user_id, email, password, role, name
+            FROM users
+            WHERE email = %s
+            """,
+            (data.email,)
+        )
+        user = cur.fetchone()
+
+    if user is None or user["password"] != data.password:
+        return JSONResponse(
+            status_code=401,
+            content={"message": "Invalid email or password."}
+        )
+
+    return {
+        "message": "Login successful",
+        "user": {
+            "user_id": user["user_id"],
+            "name": user["name"],
+            "email": user["email"],
+            "role": user["role"]
+        }
+    }
     
 @app.get("/patients/{patient_id}/appointments")
 def get_patient_appointments(patient_id: int):
