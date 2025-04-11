@@ -150,7 +150,7 @@ def login(data: login_request):
 
     token = generate_JWT({ "user_id": user["user_id"], "role": user["role"], "role_id": role_id })
 
-    return {
+    response = JSONResponse(content = {
         "message": "Login successful.",
         "jwt_token": token,
         "token_type": "bearer",
@@ -161,7 +161,18 @@ def login(data: login_request):
             "name": user["name"],
             "email": user["email"]
         }
-    }
+    })
+
+    response.set_cookie(
+        key="token",
+        value="abc.def.ghi",
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=604800
+    )
+
+    return response
 
 @app.get("/me")
 def me(req: Request):
