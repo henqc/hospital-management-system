@@ -7,6 +7,7 @@ from jose import JWTError, jwt
 from pytz import timezone
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from fastapi.middleware.cors import CORSMiddleware
 import os
 
 # To run: uvicorn server:app --reload
@@ -22,6 +23,20 @@ JWT_SECRET = os.getenv("JWT_SECRET")
 
 # Launch server and connect to postgres server
 app = FastAPI()
+
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 conn = psycopg2.connect(
     host=DB_HOST,
     port=DB_PORT,
