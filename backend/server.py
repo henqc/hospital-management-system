@@ -1,8 +1,10 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime, timedelta
+from jose import JWTError, jwt
+from pytz import timezone
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
@@ -16,6 +18,7 @@ DB_PASS = os.getenv("DB_PASS")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
+JWT_SECRET = os.getenv("JWT_SECRET")
 
 # Launch server and connect to postgres server
 app = FastAPI()
@@ -43,6 +46,13 @@ class user_sign_up_data(BaseModel):
 class login_request(BaseModel):
     email: str
     password: str
+    
+# JWT Helper
+def generate_JWT(data: dict):
+    to_encode = data.copy()
+    expire = datetime.now(timezone('US/Eastern')) + timedelta(days=7)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, JWT_SECRET, algorithm="HS256")
     
 # Ensure connection closes on server shutdown
 @app.on_event("shutdown")
@@ -115,17 +125,69 @@ def login(data: login_request):
             status_code=401,
             content={"message": "Invalid email or password."}
         )
+    
+    role_id = None
+    if user["role"] == "patient":
+        cur.execute(
+            """
+            SELECT patient_id FROM patients WHERE user_id = %s
+            """, 
+            (user["user_id"],)
+        )
+        row = cur.fetchone()
+        role_id = row["patient_id"]
+    elif user["role"] == "doctor":
+        cur.execute(
+            """
+            SELECT doctor_id FROM doctors WHERE user_id = %s
+            """, 
+            (user["user_id"],)
+        )
+        row = cur.fetchone()
+        role_id = row["doctor_id"]
+    elif user["role"] == "admin":
+        role_id = None
+
+    token = generate_JWT({ "user_id": user["user_id"], "role": user["role"], "role_id": role_id })
 
     return {
-        "message": "Login successful",
+        "message": "Login successful.",
+        "jwt_token": token,
+        "token_type": "bearer",
         "user": {
             "user_id": user["user_id"],
+            "role": user["role"],
+            "role_id": role_id,
             "name": user["name"],
-            "email": user["email"],
-            "role": user["role"]
+            "email": user["email"]
         }
     }
+
+@app.get("/me")
+def me(req: Request):
+    auth = req.headers.get("Authorization")
+    if not auth or not auth.startswith("Bearer "):
+         return JSONResponse(
+            status_code=401,
+            content={"message": "Invalid or missing header."}
+        )
+
+    token = auth.split(" ")[1]
+
+    try:
+        user_data = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except JWTError:
+        return JSONResponse(
+            status_code=401,
+            content={"message": "Invalid or expired token."}
+        )
+    return {
+        "user_id": user_data["user_id"],
+        "role": user_data["role"],
+        "role_id": user_data["role_id"]
+    }
     
+     
 @app.get("/patients/{patient_id}/appointments")
 def get_patient_appointments(patient_id: int):
     with conn.cursor() as cur:
