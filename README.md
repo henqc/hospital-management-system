@@ -53,7 +53,11 @@ npm run dev
 ## Notes:
 
 ```
-hi -> bye
+To register new user, navigate to login -> register
+Quick Links on patient dashboard do not currently work
+Register/Login/Logout funcationality works for this iteration
+Read funcationality is patient dashboard
+Write funcationality is creating new appointments
 ```
 
 - To connect to server go to http://localhost:3000
