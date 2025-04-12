@@ -1,4 +1,5 @@
 # HospitalDB
+- Repo link: https://github.com/henqc/HospitalDB
 
 ## To setup backend:
 - Optional virtual environment setup 
