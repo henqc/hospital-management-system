@@ -68,7 +68,6 @@ class appointment_details(BaseModel):
     duration: int
     date: date
     time: time
-    status: str
     reason: str
     
 # JWT Helper
@@ -310,7 +309,7 @@ def schedule_appointment(data: appointment_details):
                     data.doctor_id,
                     appointment_datetime,
                     data.duration,
-                    data.status,
+                    "scheduled",
                     data.reason
                 )
             )
