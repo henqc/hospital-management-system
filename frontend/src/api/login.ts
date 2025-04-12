@@ -3,7 +3,7 @@
 export async function HandleLogin(email: string, password: string) {
   try {
     console.log("Attempting login with:", email);
-    
+
     const res = await fetch("http://127.0.0.1:8000/login", {
       method: "POST",
       credentials: "include",
@@ -21,17 +21,16 @@ export async function HandleLogin(email: string, password: string) {
 
     const data = await res.json();
     console.log("Login successful, got data:", data);
-    
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('jwt_token', data.jwt_token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("jwt_token", data.jwt_token);
+      localStorage.setItem("user", JSON.stringify(data.user));
       console.log("Stored in localStorage:", {
         jwt_token: data.jwt_token,
-        user: data.user
+        user: data.user,
       });
     }
-    
+
     return data.user;
   } catch (error) {
     console.error("Login error:", error);

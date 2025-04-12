@@ -12,18 +12,27 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    
+
     const form = e.currentTarget;
     const userData = {
       email: (form.elements.namedItem("email") as HTMLInputElement).value,
       password: (form.elements.namedItem("password") as HTMLInputElement).value,
       name: (form.elements.namedItem("name") as HTMLInputElement).value,
       phone: (form.elements.namedItem("phone") as HTMLInputElement).value,
-      date_of_birth: (form.elements.namedItem("date_of_birth") as HTMLInputElement).value,
-      blood_type: (form.elements.namedItem("blood_type") as HTMLInputElement).value,
-      insurance_id: (form.elements.namedItem("insurance_id") as HTMLInputElement).value,
-      emergency_contact: (form.elements.namedItem("emergency_contact") as HTMLInputElement).value,
-      emergency_contact_phone: (form.elements.namedItem("emergency_contact_phone") as HTMLInputElement).value,
+      date_of_birth: (
+        form.elements.namedItem("date_of_birth") as HTMLInputElement
+      ).value,
+      blood_type: (form.elements.namedItem("blood_type") as HTMLInputElement)
+        .value,
+      insurance_id: (
+        form.elements.namedItem("insurance_id") as HTMLInputElement
+      ).value,
+      emergency_contact: (
+        form.elements.namedItem("emergency_contact") as HTMLInputElement
+      ).value,
+      emergency_contact_phone: (
+        form.elements.namedItem("emergency_contact_phone") as HTMLInputElement
+      ).value,
     };
 
     try {
@@ -40,11 +49,12 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-2xl border-2 border-black rounded-lg p-8">
-        <h1 className="text-2xl font-bold text-center mb-6">Patient Registration</h1>
+        <h1 className="text-2xl font-bold text-center mb-6">
+          Patient Registration
+        </h1>
 
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Account Information */}
             <div className="space-y-2">
               <label htmlFor="email" className="block font-medium">
                 Email
@@ -97,7 +107,6 @@ export default function Register() {
               />
             </div>
 
-            {/* Medical Information */}
             <div className="space-y-2">
               <label htmlFor="date_of_birth" className="block font-medium">
                 Date of Birth
@@ -146,7 +155,6 @@ export default function Register() {
               />
             </div>
 
-            {/* Emergency Contact Information */}
             <div className="space-y-2 md:col-span-2">
               <h2 className="font-semibold">Emergency Contact</h2>
             </div>
@@ -165,7 +173,10 @@ export default function Register() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="emergency_contact_phone" className="block font-medium">
+              <label
+                htmlFor="emergency_contact_phone"
+                className="block font-medium"
+              >
                 Emergency Contact Phone
               </label>
               <input
@@ -185,7 +196,7 @@ export default function Register() {
           >
             {loading ? "Registering..." : "Register"}
           </button>
-          
+
           <div className="text-center mt-4">
             <p>
               Already have an account?{" "}

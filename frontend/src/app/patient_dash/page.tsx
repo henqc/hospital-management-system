@@ -12,25 +12,25 @@ export default function PatientDashboard() {
   const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('jwt_token');
-    
+    const storedUser = localStorage.getItem("user");
+    const token = localStorage.getItem("jwt_token");
+
     if (!storedUser || !token) {
       console.log("No user data or token found");
       router.push("/login");
       return;
     }
-    
+
     try {
       const user = JSON.parse(storedUser);
       setUserData(user);
-      
+
       if (user.role !== "patient") {
         console.log("User is not a patient");
         router.push("/login");
         return;
       }
-      
+
       fetchPatientData(user.role_id, token);
     } catch (error) {
       console.error("Error parsing user data:", error);
@@ -40,36 +40,50 @@ export default function PatientDashboard() {
 
   const fetchPatientData = async (patientId: number, token: string) => {
     console.log("Fetching data for patient ID:", patientId);
-    
+
     try {
-      const infoResponse = await fetch(`http://127.0.0.1:8000/patients/${patientId}/info`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      
-      const appointmentsResponse = await fetch(`http://127.0.0.1:8000/patients/${patientId}/appointments`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const infoResponse = await fetch(
+        `http://127.0.0.1:8000/patients/${patientId}/info`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const appointmentsResponse = await fetch(
+        `http://127.0.0.1:8000/patients/${patientId}/appointments`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (infoResponse.ok) {
         const infoData = await infoResponse.json();
         console.log("Patient info data:", infoData);
         setPatientInfo(Array.isArray(infoData) ? infoData : []);
       } else {
-        console.error("Failed to fetch patient info:", await infoResponse.text());
+        console.error(
+          "Failed to fetch patient info:",
+          await infoResponse.text()
+        );
       }
-      
+
       if (appointmentsResponse.ok) {
         const appointmentsData = await appointmentsResponse.json();
         console.log("Appointments data:", appointmentsData);
-        setAppointments(Array.isArray(appointmentsData) ? appointmentsData : []);
+        setAppointments(
+          Array.isArray(appointmentsData) ? appointmentsData : []
+        );
       } else {
-        console.error("Failed to fetch appointments:", await appointmentsResponse.text());
+        console.error(
+          "Failed to fetch appointments:",
+          await appointmentsResponse.text()
+        );
       }
     } catch (error) {
       console.error("Error fetching patient data:", error);
@@ -88,17 +102,25 @@ export default function PatientDashboard() {
     }
   };
 
+  const formatTime = (dateString: string) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch (e) {
+      return dateString;
+    }
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
     if (hour < 18) return "Good Afternoon";
     return "Good Evening";
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('jwt_token');
-    router.push('/login');
   };
 
   if (loading) {
@@ -152,7 +174,8 @@ export default function PatientDashboard() {
                 <strong>Emergency Contact:</strong> {emergencyContact}
               </p>
               <p>
-                <strong>Emergency Contact Phone:</strong> {emergencyContactPhone}
+                <strong>Emergency Contact Phone:</strong>{" "}
+                {emergencyContactPhone}
               </p>
             </div>
           </div>
@@ -187,7 +210,7 @@ export default function PatientDashboard() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Appointments</h2>
         </div>
-        
+
         {appointments.length === 0 ? (
           <div className="text-center py-4">
             <p>No appointments scheduled.</p>
@@ -200,6 +223,7 @@ export default function PatientDashboard() {
                   <th className="p-2 text-left">Patient</th>
                   <th className="p-2 text-left">Doctor</th>
                   <th className="p-2 text-left">Appointment Date</th>
+                  <th className="p-2 text-left">Appointment Time</th>
                   <th className="p-2 text-left">Duration</th>
                   <th className="p-2 text-left">Reason</th>
                 </tr>
@@ -210,6 +234,7 @@ export default function PatientDashboard() {
                     <td className="p-2">{appointment[0] || ""}</td>
                     <td className="p-2">{appointment[1] || ""}</td>
                     <td className="p-2">{formatDate(appointment[2] || "")}</td>
+                    <td className="p-2">{formatTime(appointment[2] || "")}</td>
                     <td className="p-2">{appointment[3] || ""} min</td>
                     <td className="p-2">{appointment[4] || ""}</td>
                   </tr>
@@ -218,24 +243,15 @@ export default function PatientDashboard() {
             </table>
           </div>
         )}
-        
+
         <div className="flex justify-end mt-4">
           <Link
-            href="#"
+            href="/schedule_appointment"
             className="border-2 border-black p-2 text-center rounded-lg hover:bg-gray-100"
           >
             Schedule New Appointment
           </Link>
         </div>
-      </div>
-
-      <div className="mt-4 flex justify-end">
-        <button 
-          onClick={handleLogout}
-          className="border-2 border-black p-2 text-center rounded-lg hover:bg-gray-100"
-        >
-          Logout
-        </button>
       </div>
     </div>
   );
