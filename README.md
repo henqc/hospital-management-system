@@ -53,7 +53,7 @@ npm run dev
 ## Notes:
 
 ```
-hi
+hi -> bye
 ```
 
 - To connect to server go to http://localhost:3000
