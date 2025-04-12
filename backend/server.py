@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 from jose import JWTError, jwt
 from pytz import timezone
 import psycopg2
@@ -61,6 +61,15 @@ class user_sign_up_data(BaseModel):
 class login_request(BaseModel):
     email: str
     password: str
+
+class appointment_details(BaseModel):
+    patient_id: int
+    doctor_id: int
+    duration: int
+    date: date
+    time: time
+    status: str
+    reason: str
     
 # JWT Helper
 def generate_JWT(data: dict):
@@ -275,4 +284,55 @@ def get_patient_info(patient_id: int):
             (patient_id,)
         )
         results = cur.fetchone()
+    return results
+
+@app.post("/patients/schedule_appointment")
+def schedule_appointment(data: appointment_details):
+    appointment_datetime = datetime.combine(data.date, data.time)
+    
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        try:
+            cur.execute(
+                """
+                    INSERT INTO appointments (
+                        patient_id,
+                        doctor_id,
+                        appointment_date,
+                        duration,
+                        status,
+                        reason
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING appointment_id
+                """,
+                (
+                    data.patient_id,
+                    data.doctor_id,
+                    appointment_datetime,
+                    data.duration,
+                    data.status,
+                    data.reason
+                )
+            )
+            appointment_id = cur.fetchone()["appointment_id"]
+            return {"message": "Appointment successfully scheduled.", "appointment_id": appointment_id}
+        except Exception as e:
+            # Roll back the transaction in case of error
+            conn.rollback()
+            return JSONResponse(
+                status_code=500,
+                content={"message": f"Appointment scheduling failed: {str(e)}"}
+            )
+
+@app.get("/doctors/get_all")
+def get_all_doctors():
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT u.name, d.doctor_id
+            FROM doctors d 
+            JOIN users u ON d.user_id = u.user_id
+            """
+        )
+        results = cur.fetchall()
     return results
