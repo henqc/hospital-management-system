@@ -313,6 +313,7 @@ def schedule_appointment(data: appointment_details):
                     data.reason
                 )
             )
+            conn.commit()
             appointment_id = cur.fetchone()["appointment_id"]
             return {"message": "Appointment successfully scheduled.", "appointment_id": appointment_id}
         except Exception as e:
