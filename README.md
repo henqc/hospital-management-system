@@ -50,7 +50,10 @@ npm install
 npm run dev
 ```
 
-- NOTES: something something
-- hi
+## Notes:
+
+```
+hi
+```
 
 - To connect to server go to http://localhost:3000
