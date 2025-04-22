@@ -527,6 +527,26 @@ def patient_get_medical_records(patient_id: int):
 
 # Doctor Functionality
 
+@app.get("/doctors/{doctor_id}/info")
+def get_doctor_info(doctor_id: int):
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                u.name,
+                u.email,
+                d.specialization,
+                d.department,
+                d.license_number
+            FROM doctors d
+            JOIN users u ON u.user_id = d.user_id
+            WHERE d.doctor_id = %s;
+            """,
+            (doctor_id,)
+        )
+        results = cur.fetchone()
+    return results
+
 @app.get("/doctors/get_all")
 def get_all_doctors():
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
