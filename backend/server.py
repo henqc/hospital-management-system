@@ -92,13 +92,22 @@ class billing_details(BaseModel):
     payment_date: str | None = None
     
 class medical_details(BaseModel):
+    # medical record stuff
     patient_id: int
     doctor_id: int
-    appointment_id: int | None = None
+    appointment_id: int
     record_date: datetime
     diagnosis: str
     symptoms: str
     notes: str
+    
+    # prescription stuff
+    medication: str | None = None
+    dosage: str | None = None
+    frequency: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    prescription_notes: str | None = None
 
     
 # JWT Helper
@@ -527,26 +536,6 @@ def patient_get_medical_records(patient_id: int):
 
 # Doctor Functionality
 
-@app.get("/doctors/{doctor_id}/info")
-def get_doctor_info(doctor_id: int):
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT
-                u.name,
-                u.email,
-                d.specialization,
-                d.department,
-                d.license_number
-            FROM doctors d
-            JOIN users u ON u.user_id = d.user_id
-            WHERE d.doctor_id = %s;
-            """,
-            (doctor_id,)
-        )
-        results = cur.fetchone()
-    return results
-
 @app.get("/doctors/get_all")
 def get_all_doctors():
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -626,39 +615,72 @@ def add_medical_record(data: medical_details):
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         try:
             time = datetime.now(timezone('US/Eastern'))
+
+            # Insert into medical_records
             cur.execute(
                 """
                 INSERT INTO medical_records (
-                    patient_id,
-                    doctor_id,
-                    appointment_id,
+                    patient_id, 
+                    doctor_id, 
+                    appointment_id, 
                     record_date,
-                    diagnosis,
-                    symptoms,
-                    notes,
-                    created_at,
+                    diagnosis, 
+                    symptoms, 
+                    notes, 
+                    created_at, 
                     updated_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING record_id;
                 """,
                 (
-                    data.patient_id,
-                    data.doctor_id,
+                    data.patient_id, 
+                    data.doctor_id, 
                     data.appointment_id,
-                    data.record_date,
-                    data.diagnosis,
+                    data.record_date, 
+                    data.diagnosis, 
                     data.symptoms,
-                    data.notes,
-                    time,
+                    data.notes, 
+                    time, 
                     time
                 )
             )
-            conn.commit()
             record_id = cur.fetchone()["record_id"]
-            return {"message": "Medical record successfully added.", "record_id": record_id}
+
+            # Insert into prescriptions if all prescription fields are present
+            if data.medication and data.dosage and data.frequency and data.start_date and data.end_date:
+                cur.execute(
+                    """
+                    INSERT INTO prescriptions (
+                        record_id, 
+                        medication, 
+                        dosage, 
+                        frequency,
+                        start_date,
+                        end_date, 
+                        notes, 
+                        created_at, 
+                        updated_at
+                    ) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+                    """,
+                    (
+                        record_id, 
+                        data.medication, 
+                        data.dosage, 
+                        data.frequency,
+                        data.start_date, 
+                        data.end_date, 
+                        data.prescription_notes,
+                        time, 
+                        time
+                    )
+                )
+            conn.commit()
+            return {"message": "Medical record/Prescription successfully added.", "record_id": record_id}
         except Exception as e:
             conn.rollback()
-            return JSONResponse(status_code=500, content={"message": f"Medical record insert failed: {str(e)}"})
+            return JSONResponse(status_code=500, content={"message": f"Medical record/Prescription insertion failed: {str(e)}"})
 
 @app.put("/doctors/update_medical_records/{record_id}")
 def update_medical_records(data:medical_details, record_id: int):
@@ -668,8 +690,7 @@ def update_medical_records(data:medical_details, record_id: int):
             cur.execute(
                 """
                 UPDATE medical_records
-                SET
-                    patient_id = %s,
+                SET patient_id = %s,
                     doctor_id = %s,
                     appointment_id = %s,
                     record_date = %s,
@@ -677,23 +698,80 @@ def update_medical_records(data:medical_details, record_id: int):
                     symptoms = %s,
                     notes = %s,
                     updated_at = %s
-                WHERE record_id = %s
-                RETURNING record_id;
+                WHERE record_id = %s;
                 """,
                 (
-                    data.patient_id,
-                    data.doctor_id,
+                    data.patient_id, 
+                    data.doctor_id, 
                     data.appointment_id,
                     data.record_date,
-                    data.diagnosis,
+                    data.diagnosis, 
                     data.symptoms,
-                    data.notes,
-                    time,
+                    data.notes, 
+                    time, 
                     record_id
                 )
             )
+
+            if data.medication and data.dosage and data.frequency and data.start_date and data.end_date:
+                cur.execute("SELECT prescription_id FROM prescriptions WHERE record_id = %s", (record_id,))
+                exists = cur.fetchone()
+
+                if exists:
+                    cur.execute(
+                        """
+                        UPDATE prescriptions
+                        SET 
+                            medication = %s, 
+                            dosage = %s, 
+                            frequency = %s,
+                            start_date = %s, 
+                            end_date = %s, 
+                            notes = %s,
+                            updated_at = %s
+                        WHERE record_id = %s;
+                        """,
+                        (
+                            data.medication, 
+                            data.dosage, 
+                            data.frequency,
+                            data.start_date, 
+                            data.end_date, 
+                            data.prescription_notes,
+                            time, 
+                            record_id
+                        )
+                    )
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO prescriptions (
+                            record_id, 
+                            medication, 
+                            dosage, 
+                            frequency,
+                            start_date, 
+                            end_date, 
+                            notes, 
+                            created_at, 
+                            updated_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+                        """,
+                        (
+                            record_id, 
+                            data.medication, 
+                            data.dosage,
+                            data.frequency, 
+                            data.start_date, 
+                            data.end_date,
+                            data.prescription_notes, 
+                            time, 
+                            time
+                        )
+                    )
+
             conn.commit()
-            return {"message": "Medical record successfully updated.", "record_id": record_id}
+            return {"message": "Medical record/Prescription successfully updated.", "record_id": record_id}
         except Exception as e:
             conn.rollback()
-            return JSONResponse(status_code=500, content={"message": f"Medical record update failed: {str(e)}"})
+            return JSONResponse(status_code=500, content={"message": f"Update failed: {str(e)}"})
