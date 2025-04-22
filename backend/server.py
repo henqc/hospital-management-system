@@ -90,6 +90,15 @@ class billing_details(BaseModel):
     payment_status: str | None = None
     payment_method: str | None = None
     payment_date: str | None = None
+    
+class medical_details(BaseModel):
+    patient_id: int
+    doctor_id: int
+    appointment_id: int | None = None
+    record_date: datetime
+    diagnosis: str
+    symptoms: str
+    notes: str
 
     
 # JWT Helper
@@ -325,7 +334,7 @@ def cancel_appointment(appointment_id: str):
                 content={"message": f"Appointment cancellation failed: {str(e)}"}
             )
          
-@app.get("/get_all_billing/")
+@app.get("/get_billing/")
 def get_all_billing():
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
@@ -337,12 +346,7 @@ def get_all_billing():
         )
         results = cur.fetchall()
     return results
-        
-# takes in json:
-# patient_id: int
-# amount: float
-# payment_status: str
-# payment_method: str   
+         
 @app.put("/update_billing/{bill_id}")
 def update_billing(data: billing_details, bill_id: str):
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -390,33 +394,21 @@ def update_billing(data: billing_details, bill_id: str):
                 content={"message": f"Bill update failed: {str(e)}"}
             )
 
-# Patient Functionality
-
-@app.get("/patients/{patient_id}/appointments")
-def get_patient_appointments(patient_id: int):
-    with conn.cursor() as cur:
+@app.get("/get_prescriptions/{record_id}")
+def patient_get_medical_records(record_id: int):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
             """
-            SELECT 
-                a.appointment_id AS appointment_id,
-                u.name AS patient_name,
-                u2.name AS doctor_name,
-                a.appointment_date,
-                a.duration,
-                a.reason
-            FROM appointments a
-            JOIN patients p ON p.patient_id = a.patient_id
-            JOIN users u ON u.user_id = p.user_id
-            JOIN doctors d ON d.doctor_id = a.doctor_id
-            JOIN users u2 ON u2.user_id = d.user_id
-            WHERE a.patient_id = %s
-            ORDER BY a.appointment_date ASC;
+                SELECT * 
+                FROM prescriptions p
+                WHERE record_id = %s
             """,
-            (patient_id,)
+            (record_id,)
         )
         results = cur.fetchall()
     return results
 
+# Patient Functionality
 @app.get("/patients/{patient_id}/info")
 def get_patient_info(patient_id: int):
     with conn.cursor() as cur:
@@ -437,6 +429,31 @@ def get_patient_info(patient_id: int):
             (patient_id,)
         )
         results = cur.fetchone()
+    return results
+
+@app.get("/patients/{patient_id}/appointments")
+def get_patient_appointments(patient_id: int):
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT 
+                u.name AS patient_name,
+                u2.name AS doctor_name,
+                a.appointment_date,
+                a.duration,
+                a.reason,
+                a.appointment_id AS appointment_id
+            FROM appointments a
+            JOIN patients p ON p.patient_id = a.patient_id
+            JOIN users u ON u.user_id = p.user_id
+            JOIN doctors d ON d.doctor_id = a.doctor_id
+            JOIN users u2 ON u2.user_id = d.user_id
+            WHERE a.patient_id = %s
+            ORDER BY a.appointment_date ASC;
+            """,
+            (patient_id,)
+        )
+        results = cur.fetchall()
     return results
 
 @app.post("/patients/schedule_appointment/")
@@ -478,7 +495,7 @@ def schedule_appointment(data: appointment_details):
                 content={"message": f"Appointment scheduling failed: {str(e)}"}
             )
     
-@app.get("/patients/get_all_billing/{patient_id}")
+@app.get("/patients/get_billing/{patient_id}")
 def patient_get_all_billing(patient_id: int):
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
@@ -487,6 +504,21 @@ def patient_get_all_billing(patient_id: int):
                 FROM billing_records b
                 WHERE patient_id = %s
                 ORDER BY b.bill_id ASC
+            """,
+            (patient_id,)
+        )
+        results = cur.fetchall()
+    return results
+
+@app.get("/patients/get_medical_records/{patient_id}")
+def patient_get_medical_records(patient_id: int):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+                SELECT * 
+                FROM medical_records m
+                WHERE patient_id = %s
+                ORDER BY m.record_id ASC
             """,
             (patient_id,)
         )
@@ -532,3 +564,116 @@ def get_doctor_appointments(doctor_id: int):
         )
         results = cur.fetchall()
     return results
+
+@app.get("/doctors/patients/{doctor_id}")
+def get_doctor_appointments(doctor_id: int):
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT DISTINCT
+                p.patient_id,
+                u.name AS patient_name,
+                u.email AS patient_email
+            FROM appointments a
+            JOIN patients p ON p.patient_id = a.patient_id
+            JOIN users u ON u.user_id = p.user_id
+            WHERE a.doctor_id = %s
+            ORDER BY p.patient_id ASC;
+            """,
+            (doctor_id,)
+        )
+        results = cur.fetchall()
+    return results
+
+@app.get("/doctors/get_medical_records/{doctor_id}")
+def patient_get_medical_records(doctor_id: int):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+                SELECT * 
+                FROM medical_records m
+                WHERE doctor_id = %s
+                ORDER BY m.record_id ASC
+            """,
+            (doctor_id,)
+        )
+        results = cur.fetchall()
+    return results
+
+# TODO: update to integrate prescriptions
+@app.post("/doctors/add_medical_record/")
+def add_medical_record(data: medical_details):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        try:
+            time = datetime.now(timezone('US/Eastern'))
+            cur.execute(
+                """
+                INSERT INTO medical_records (
+                    patient_id,
+                    doctor_id,
+                    appointment_id,
+                    record_date,
+                    diagnosis,
+                    symptoms,
+                    notes,
+                    created_at,
+                    updated_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING record_id;
+                """,
+                (
+                    data.patient_id,
+                    data.doctor_id,
+                    data.appointment_id,
+                    data.record_date,
+                    data.diagnosis,
+                    data.symptoms,
+                    data.notes,
+                    time,
+                    time
+                )
+            )
+            conn.commit()
+            record_id = cur.fetchone()["record_id"]
+            return {"message": "Medical record successfully added.", "record_id": record_id}
+        except Exception as e:
+            conn.rollback()
+            return JSONResponse(status_code=500, content={"message": f"Medical record insert failed: {str(e)}"})
+
+@app.put("/doctors/update_medical_records/{record_id}")
+def update_medical_records(data:medical_details, record_id: int):
+    with conn.cursor() as cur:
+        try:
+            time = datetime.now(timezone('US/Eastern'))
+            cur.execute(
+                """
+                UPDATE medical_records
+                SET
+                    patient_id = %s,
+                    doctor_id = %s,
+                    appointment_id = %s,
+                    record_date = %s,
+                    diagnosis = %s,
+                    symptoms = %s,
+                    notes = %s,
+                    updated_at = %s
+                WHERE record_id = %s
+                RETURNING record_id;
+                """,
+                (
+                    data.patient_id,
+                    data.doctor_id,
+                    data.appointment_id,
+                    data.record_date,
+                    data.diagnosis,
+                    data.symptoms,
+                    data.notes,
+                    time,
+                    record_id
+                )
+            )
+            conn.commit()
+            return {"message": "Medical record successfully updated.", "record_id": record_id}
+        except Exception as e:
+            conn.rollback()
+            return JSONResponse(status_code=500, content={"message": f"Medical record update failed: {str(e)}"})
