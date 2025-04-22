@@ -70,6 +70,28 @@ class appointment_details(BaseModel):
     time: time
     reason: str
     
+class reschedule_details(BaseModel):
+    appointment_id: int
+    patient_id: int
+    doctor_id: int
+    duration: int
+    date: date
+    time: time
+    reason: str
+    
+class billing_details(BaseModel):
+    patient_id: int
+    appointment_id: int | None = None
+    record_id: int | None = None
+    prescription_id: int | None = None
+    amount: float
+    tax: float
+    date_billed: str | None = None
+    payment_status: str | None = None
+    payment_method: str | None = None
+    payment_date: str | None = None
+
+    
 # JWT Helper
 def generate_JWT(data: dict):
     to_encode = data.copy()
@@ -93,6 +115,8 @@ def db_status():
         cur.execute("SELECT 1;")
         result = cur.fetchone()
     return {"status": "connected", "result": result}
+
+# Admin / General Functionality
 
 @app.post("/sign_up")
 def sign_up(data: user_sign_up_data):
@@ -238,13 +262,143 @@ def me(req: Request):
         "role_id": user_data["role_id"]
     }
     
-     
+# takes in same json as scheduling appointment
+@app.put("/reschedule_appointment/{appointment_id}")
+def reschedule_appointment(data: appointment_details, appointment_id: str):
+    appointment_datetime = datetime.combine(data.date, data.time)
+    
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        try:
+            cur.execute(
+                """
+                    UPDATE appointments 
+                    SET
+                        patient_id = %s,
+                        doctor_id = %s,
+                        appointment_date = %s,
+                        duration = %s,
+                        status = %s,
+                        reason = %s
+                    WHERE appointment_id = %s
+                    RETURNING appointment_id
+                """,
+                (
+                    data.patient_id,
+                    data.doctor_id,
+                    appointment_datetime,
+                    data.duration,
+                    "scheduled",
+                    data.reason,
+                    appointment_id
+                )
+            )
+            conn.commit()
+            appointment_id = cur.fetchone()["appointment_id"]
+            return {"message": "Appointment successfully updated.", "appointment_id": appointment_id}
+        except Exception as e:
+            # Roll back the transaction in case of error
+            conn.rollback()
+            return JSONResponse(
+                status_code=500,
+                content={"message": f"Appointment update failed: {str(e)}"}
+            )
+
+@app.delete("/cancel_appointment/{appointment_id}")
+def cancel_appointment(appointment_id: str):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        try:
+            cur.execute(
+                """
+                    DELETE FROM appointments 
+                    WHERE appointment_id = %s
+                    RETURNING appointment_id
+                """,
+                (appointment_id,)
+            )
+            conn.commit()
+            return {"message": "Appointment successfully cancelled.", "appointment_id": appointment_id}
+        except Exception as e:
+            # Roll back the transaction in case of error
+            conn.rollback()
+            return JSONResponse(
+                status_code=500,
+                content={"message": f"Appointment cancellation failed: {str(e)}"}
+            )
+         
+@app.get("/get_all_billing/")
+def get_all_billing():
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+                SELECT * 
+                FROM billing_records b
+                ORDER BY b.bill_id ASC
+            """
+        )
+        results = cur.fetchall()
+    return results
+        
+# takes in json:
+# patient_id: int
+# amount: float
+# payment_status: str
+# payment_method: str   
+@app.put("/update_billing/{bill_id}")
+def update_billing(data: billing_details, bill_id: str):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        try:
+            updated_at = datetime.now(timezone('US/Eastern'))
+            cur.execute(
+                """
+                UPDATE billing_records
+                SET
+                    patient_id = %s,
+                    appointment_id = %s,
+                    record_id = %s,
+                    prescription_id = %s,
+                    amount = %s,
+                    tax = %s,
+                    date_billed = %s,
+                    payment_status = %s,
+                    payment_method = %s,
+                    payment_date = %s,
+                    updated_at = %s
+                WHERE bill_id = %s
+                RETURNING bill_id
+                """,
+                (
+                    data.patient_id,
+                    data.appointment_id,
+                    data.record_id,
+                    data.prescription_id,
+                    data.amount,
+                    data.tax,
+                    data.date_billed,
+                    data.payment_status,
+                    data.payment_method,
+                    data.payment_date,
+                    updated_at,
+                    bill_id
+                )
+            )
+            conn.commit()
+            return {"message": "Bill successfully updated.", "bill_id": bill_id}
+        except Exception as e:
+            conn.rollback()
+            return JSONResponse(
+                status_code=500,
+                content={"message": f"Bill update failed: {str(e)}"}
+            )
+
+# Patient Functionality
+
 @app.get("/patients/{patient_id}/appointments")
 def get_patient_appointments(patient_id: int):
     with conn.cursor() as cur:
         cur.execute(
             """
             SELECT 
+                a.appointment_id AS appointment_id,
                 u.name AS patient_name,
                 u2.name AS doctor_name,
                 a.appointment_date,
@@ -285,7 +439,7 @@ def get_patient_info(patient_id: int):
         results = cur.fetchone()
     return results
 
-@app.post("/patients/schedule_appointment")
+@app.post("/patients/schedule_appointment/")
 def schedule_appointment(data: appointment_details):
     appointment_datetime = datetime.combine(data.date, data.time)
     
@@ -323,6 +477,23 @@ def schedule_appointment(data: appointment_details):
                 status_code=500,
                 content={"message": f"Appointment scheduling failed: {str(e)}"}
             )
+    
+@app.get("/patients/get_all_billing/{patient_id}")
+def patient_get_all_billing(patient_id: int):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+                SELECT * 
+                FROM billing_records b
+                WHERE patient_id = %s
+                ORDER BY b.bill_id ASC
+            """,
+            (patient_id,)
+        )
+        results = cur.fetchall()
+    return results
+
+# Doctor Functionality
 
 @app.get("/doctors/get_all")
 def get_all_doctors():
@@ -333,6 +504,31 @@ def get_all_doctors():
             FROM doctors d 
             JOIN users u ON d.user_id = u.user_id
             """
+        )
+        results = cur.fetchall()
+    return results
+
+# takes in doctor id and returns all doctor appointments
+@app.get("/doctors/{doctor_id}/appointments")
+def get_doctor_appointments(doctor_id: int):
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT 
+                u.name AS patient_name,
+                u2.name AS doctor_name,
+                a.appointment_date,
+                a.duration,
+                a.reason
+            FROM appointments a
+            JOIN patients p ON p.patient_id = a.patient_id
+            JOIN users u ON u.user_id = p.user_id
+            JOIN doctors d ON d.doctor_id = a.doctor_id
+            JOIN users u2 ON u2.user_id = d.user_id
+            WHERE a.doctor_id = %s
+            ORDER BY a.appointment_date ASC;
+            """,
+            (doctor_id,)
         )
         results = cur.fetchall()
     return results
