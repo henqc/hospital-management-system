@@ -10,6 +10,7 @@ export default function PatientDashboard() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
+  const [cancelingId, setCancelingId] = useState<number | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -89,6 +90,47 @@ export default function PatientDashboard() {
       console.error("Error fetching patient data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancelAppointment = async (appointmentId: number) => {
+    const token = localStorage.getItem("jwt_token");
+    if (!token) {
+      console.log("No token found");
+      router.push("/login");
+      return;
+    }
+
+    setCancelingId(appointmentId);
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/cancel_appointment/${appointmentId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        // Remove the canceled appointment from the list
+        setAppointments(appointments.filter(
+          (appointment) => appointment[5] !== appointmentId
+        ));
+        alert("Appointment canceled successfully");
+      } else {
+        const errorText = await response.text();
+        console.error("Failed to cancel appointment:", errorText);
+        alert("Failed to cancel appointment. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error canceling appointment:", error);
+      alert("An error occurred while canceling the appointment.");
+    } finally {
+      setCancelingId(null);
     }
   };
 
@@ -220,19 +262,41 @@ export default function PatientDashboard() {
                   <th className="p-2 text-left">Appointment Time</th>
                   <th className="p-2 text-left">Duration</th>
                   <th className="p-2 text-left">Reason</th>
+                  <th className="p-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {appointments.map((appointment, index) => (
-                  <tr key={index} className="border-b border-black">
-                    <td className="p-2">{appointment[0] || ""}</td>
-                    <td className="p-2">{appointment[1] || ""}</td>
-                    <td className="p-2">{formatDate(appointment[2] || "")}</td>
-                    <td className="p-2">{formatTime(appointment[2] || "")}</td>
-                    <td className="p-2">{appointment[3] || ""} min</td>
-                    <td className="p-2">{appointment[4] || ""}</td>
-                  </tr>
-                ))}
+                {appointments.map((appointment, index) => {
+                  // Assuming appointment[5] is the appointment ID
+                  const appointmentId = appointment[5] || index;
+                  return (
+                    <tr key={index} className="border-b border-black">
+                      <td className="p-2">{appointment[0] || ""}</td>
+                      <td className="p-2">{appointment[1] || ""}</td>
+                      <td className="p-2">{formatDate(appointment[2] || "")}</td>
+                      <td className="p-2">{formatTime(appointment[2] || "")}</td>
+                      <td className="p-2">{appointment[3] || ""} min</td>
+                      <td className="p-2">{appointment[4] || ""}</td>
+                      <td className="p-2">
+                        <div className="flex space-x-2">
+                          <Link
+                            href={`/edit_appointment/${appointmentId}`}
+                            className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                          >
+                            Reschedule
+                          </Link>
+                          <button
+                            onClick={() => handleCancelAppointment(appointmentId)}
+                            disabled={cancelingId === appointmentId}
+                            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm disabled:bg-gray-400"
+                          >
+                            {cancelingId === appointmentId ? "Canceling..." : "Cancel"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

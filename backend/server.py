@@ -467,7 +467,7 @@ def reschedule_appointment(data: appointment_details, appointment_id: str):
                 content={"message": f"Appointment update failed: {str(e)}"}
             )
 
-@app.delete("/cancel_appointment/{appointment_id}")
+@app.post("/cancel_appointment/{appointment_id}")
 def cancel_appointment(appointment_id: str):
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         try:
@@ -562,6 +562,34 @@ def patient_get_medical_records(record_id: int):
         )
         results = cur.fetchall()
     return results
+
+@app.get("/get_appointment/{appointment_id}")
+def get_appointment(appointment_id: int):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT 
+                a.appointment_id,
+                a.patient_id,
+                a.doctor_id,
+                u2.name AS doctor_name,
+                a.appointment_date,
+                a.duration,
+                a.reason
+            FROM appointments a
+            JOIN doctors d ON d.doctor_id = a.doctor_id
+            JOIN users u2 ON u2.user_id = d.user_id
+            WHERE a.appointment_id = %s;
+            """,
+            (appointment_id,)
+        )
+        result = cur.fetchone()
+
+        if result is None:
+            return JSONResponse(status_code=404, content={"message": "Appointment not found"})
+        
+        return result
+
 
 # Patient Functionality
 @app.get("/patients/{patient_id}/info")
