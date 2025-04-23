@@ -185,22 +185,16 @@ export default function PatientDashboard() {
           <h2 className="text-xl font-bold mb-4">Quick Links</h2>
           <div className="flex flex-col gap-2">
             <Link
-              href="#"
+              href="/patient_billing"
               className="border-2 border-black p-2 text-center rounded-lg hover:bg-gray-100"
             >
               Billing
             </Link>
             <Link
-              href="#"
+              href="/patient_medical_history"
               className="border-2 border-black p-2 text-center rounded-lg hover:bg-gray-100"
             >
               Medical History
-            </Link>
-            <Link
-              href="#"
-              className="border-2 border-black p-2 text-center rounded-lg hover:bg-gray-100"
-            >
-              Prescriptions
             </Link>
           </div>
         </div>
