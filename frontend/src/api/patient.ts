@@ -23,6 +23,7 @@ export type PatientInfo = [
   string,
   string,
   string,
+  string,
   string
 ];
 

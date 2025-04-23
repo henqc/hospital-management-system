@@ -431,7 +431,7 @@ def get_all_doctors():
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
             """
-            SELECT u.name, u.email, d.specialization, d.department, d.license_number
+            SELECT u.name, u.email, d.specialization, d.department, d.license_number, d.doctor_id
             FROM doctors d 
             JOIN users u ON d.user_id = u.user_id
             """
@@ -444,7 +444,7 @@ def get_all_doctors():
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
             """
-            SELECT u.name, u.email, u.phone, p.date_of_birth, p.blood_type, p.insurance_id, p.emergency_contact, p.emergency_contact_phone
+            SELECT u.name, u.email, u.phone, p.date_of_birth, p.blood_type, p.insurance_id, p.emergency_contact, p.emergency_contact_phone, p.patient_id
             FROM patients p 
             JOIN users u ON p.user_id = u.user_id
             """
@@ -493,7 +493,7 @@ def reschedule_appointment(data: appointment_details, appointment_id: str):
                 content={"message": f"Appointment update failed: {str(e)}"}
             )
 
-@app.post("/cancel_appointment/{appointment_id}")
+@app.delete("/cancel_appointment/{appointment_id}")
 def cancel_appointment(appointment_id: str):
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         try:
@@ -617,6 +617,34 @@ def get_appointment(appointment_id: int):
         return result
 
 
+@app.get("/get_appointment/{appointment_id}")
+def get_appointment(appointment_id: int):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT 
+                a.appointment_id,
+                a.patient_id,
+                a.doctor_id,
+                u2.name AS doctor_name,
+                a.appointment_date,
+                a.duration,
+                a.reason
+            FROM appointments a
+            JOIN doctors d ON d.doctor_id = a.doctor_id
+            JOIN users u2 ON u2.user_id = d.user_id
+            WHERE a.appointment_id = %s;
+            """,
+            (appointment_id,)
+        )
+        result = cur.fetchone()
+
+        if result is None:
+            return JSONResponse(status_code=404, content={"message": "Appointment not found"})
+        
+        return result
+
+
 # Patient Functionality
 @app.get("/patients/{patient_id}/info")
 def get_patient_info(patient_id: int):
@@ -630,7 +658,8 @@ def get_patient_info(patient_id: int):
                 p.blood_type,
                 p.insurance_id,
                 p.emergency_contact,
-                p.emergency_contact_phone
+                p.emergency_contact_phone,
+                u.name
             FROM patients p
             JOIN users u ON u.user_id = p.user_id
             WHERE p.patient_id = %s;
@@ -780,7 +809,8 @@ def get_doctor_appointments(doctor_id: int):
                 u2.name AS doctor_name,
                 a.appointment_date,
                 a.duration,
-                a.reason
+                a.reason,
+                a.appointment_id
             FROM appointments a
             JOIN patients p ON p.patient_id = a.patient_id
             JOIN users u ON u.user_id = p.user_id
@@ -901,15 +931,30 @@ def add_medical_record(data: medical_details):
             conn.rollback()
             return JSONResponse(status_code=500, content={"message": f"Medical record/Prescription insertion failed: {str(e)}"})
 
-@app.put("/doctors/update_medical_records/{record_id}")
-def update_medical_records(data:medical_details, record_id: int):
+@app.put("/doctors/update_medical_records/{appointment_id}")
+def update_medical_records(data:medical_details, appointment_id: int):
     with conn.cursor() as cur:
         try:
+            cur.execute(
+                        """
+                        SELECT record_id 
+                        FROM medical_records 
+                        WHERE appointment_id = %s
+                        """, 
+                        (appointment_id,)
+                        )
+            result = cur.fetchone()
+            if not result:
+                return JSONResponse(status_code=404, content={"message": "No medical record found for this appointment."})
+
+            record_id = result[0]
             time = datetime.now(timezone('US/Eastern'))
+
             cur.execute(
                 """
                 UPDATE medical_records
-                SET patient_id = %s,
+                SET 
+                    patient_id = %s,
                     doctor_id = %s,
                     appointment_id = %s,
                     record_date = %s,
@@ -988,8 +1033,53 @@ def update_medical_records(data:medical_details, record_id: int):
                             time
                         )
                     )
+
             conn.commit()
-            return {"message": "Medical record/Prescription successfully updated.", "record_id": record_id}
+            return {"message": "Medical record and prescription updated successfully.", "appointment_id": appointment_id}
+
         except Exception as e:
             conn.rollback()
             return JSONResponse(status_code=500, content={"message": f"Update failed: {str(e)}"})
+        
+@app.get("/doctors/get_prescriptions/{appointment_id}")
+def get_prescriptions_by_appointment(appointment_id: int):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT p.*
+            FROM prescriptions p
+            JOIN medical_records m ON p.record_id = m.record_id
+            WHERE m.appointment_id = %s
+            """,
+            (appointment_id,)
+        )
+        results = cur.fetchall()
+
+    if not results:
+        return JSONResponse(
+            status_code=404,
+            content={"message": "No prescriptions from this appointment."}
+        )
+
+    return results
+
+@app.get("/doctors/get_medical_history/{appointment_id}")
+def get_prescriptions_by_appointment(appointment_id: int):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT m.*
+            FROM medical_records m
+            WHERE m.appointment_id = %s
+            """,
+            (appointment_id,)
+        )
+        results = cur.fetchall()
+
+    if not results:
+        return JSONResponse(
+            status_code=404,
+            content={"message": "No medical records from this appointment."}
+        )
+
+    return results
