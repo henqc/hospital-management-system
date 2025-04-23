@@ -123,7 +123,7 @@ export default function PatientDashboard() {
   if (loading) {
     return (
       <div className="p-4 flex justify-center items-center min-h-screen">
-        <p className="text-xl">Loading patient data...</p>
+        <p className="text-xl">Verifying patient access...</p>
       </div>
     );
   }

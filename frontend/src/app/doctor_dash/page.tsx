@@ -112,7 +112,7 @@ export default function DoctorDashboard() {
   if (loading) {
     return (
       <div className="p-4 flex justify-center items-center min-h-screen">
-        <p className="text-xl">Loading doctor dashboard...</p>
+        <p className="text-xl">Verifying doctor access...</p>
       </div>
     );
   }
