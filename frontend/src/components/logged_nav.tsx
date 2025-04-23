@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react"; // Import hooks
 
 interface LoggedNavProps {
   setIsSignedIn: (state: boolean) => void;
@@ -9,6 +10,42 @@ interface LoggedNavProps {
 
 export function LoggedNav({ setIsSignedIn }: LoggedNavProps) {
   const router = useRouter();
+  const [dashboardPath, setDashboardPath] = useState<string>("/");
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    let path = "/";
+
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        switch (user.role) {
+          case "patient":
+            path = "/patient_dash";
+            break;
+          case "doctor":
+            path = "/doctor_dash";
+            break;
+          case "admin":
+            path = "/admin_dash";
+            break;
+          default:
+            path = "/";
+            break;
+        }
+      } catch (error) {
+        console.error(
+          "LoggedNav: Error parsing user data from localStorage:",
+          error
+        );
+        path = "/";
+      }
+    } else {
+      path = "/login";
+    }
+
+    setDashboardPath(path);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -19,7 +56,7 @@ export function LoggedNav({ setIsSignedIn }: LoggedNavProps) {
   };
 
   return (
-    <header className="bg-white px-6 py-4 flex justify-between items-center w-full">
+    <header className="bg-white px-6 py-4 flex justify-between items-center w-full border-b">
       <Link
         href="/"
         className="flex items-center gap-2 px-4 py-2 rounded-md transition text-blue-600 hover:bg-blue-100"
@@ -28,11 +65,12 @@ export function LoggedNav({ setIsSignedIn }: LoggedNavProps) {
       </Link>
       <div className="flex items-center gap-4">
         <Link
-          href="/patient_dash"
-          className="text-blue-600 mr-4 hover:bg-blue-100 px-4 py-2 rounded-md"
+          href={dashboardPath}
+          className="text-blue-600 mr-4 hover:bg-blue-100 px-4 py-2 rounded-md transition"
         >
           Dashboard
         </Link>
+
         <button
           onClick={handleLogout}
           className="flex items-center gap-2 px-4 py-2 rounded-md transition text-white bg-blue-300 hover:bg-blue-400"
