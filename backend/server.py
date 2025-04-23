@@ -426,6 +426,32 @@ def update_patient_info(data: update_patient, patient_id: int):
             conn.rollback()
             return JSONResponse(status_code=500, content={"message": f"Update failed: {str(e)}"})
 
+@app.get("/admin/get_all_doctors")
+def get_all_doctors():
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT u.name, u.email, d.specialization, d.department, d.license_number
+            FROM doctors d 
+            JOIN users u ON d.user_id = u.user_id
+            """
+        )
+        results = cur.fetchall()
+    return results
+
+@app.get("/admin/get_all_patients")
+def get_all_doctors():
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT u.name, u.email, u.phone, p.date_of_birth, p.blood_type, p.insurance_id, p.emergency_contact, p.emergency_contact_phone
+            FROM patients p 
+            JOIN users u ON p.user_id = u.user_id
+            """
+        )
+        results = cur.fetchall()
+    return results
+
 # takes in same json as scheduling appointment
 @app.put("/reschedule_appointment/{appointment_id}")
 def reschedule_appointment(data: appointment_details, appointment_id: str):
