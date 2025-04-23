@@ -84,7 +84,7 @@ export default function PatientMedicalHistory() {
       })
 
       // Get patient name (assuming it's stored separately)
-      const patientNameResponse = await fetch(`http://127.0.0.1:8000/patients/${patientId}`, {
+      const patientNameResponse = await fetch(`http://127.0.0.1:8000/patients/${patientId}/info`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -105,7 +105,8 @@ export default function PatientMedicalHistory() {
       let patientName = "Patient"
       if (patientNameResponse.ok) {
         const nameData = await patientNameResponse.json()
-        patientName = nameData.name || "Patient"
+        console.log(nameData)
+        patientName = nameData[7] || "Patient"
       }
 
       // Create patient info object

@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   getDoctorAppointments,
@@ -10,112 +10,104 @@ import {
   type DoctorInfo,
   getDoctorPatients,
   type DoctorPatient,
-} from "@/api/doctors";
+} from "@/api/doctors"
 
 export default function DoctorDashboard() {
-  const router = useRouter();
-  const [appointments, setAppointments] = useState<DoctorAppointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState<any>(null);
-  const [doctorInfo, setDoctorInfo] = useState<DoctorInfo | null>(null);
-  const [patients, setPatients] = useState<DoctorPatient[]>([]);
+  const router = useRouter()
+  const [appointments, setAppointments] = useState<DoctorAppointment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [userData, setUserData] = useState<any>(null)
+  const [doctorInfo, setDoctorInfo] = useState<DoctorInfo | null>(null)
+  const [patients, setPatients] = useState<DoctorPatient[]>([])
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("jwt_token");
+    const storedUser = localStorage.getItem("user")
+    const token = localStorage.getItem("jwt_token")
 
     if (!storedUser || !token) {
-      router.push("/login");
-      return;
+      router.push("/login")
+      return
     }
 
     try {
-      const user = JSON.parse(storedUser);
-      setUserData(user);
+      const user = JSON.parse(storedUser)
+      setUserData(user)
 
       if (user.role !== "doctor") {
-        router.push("/login");
-        return;
+        router.push("/login")
+        return
       }
 
       if (!user.role_id || typeof user.role_id !== "number") {
-        router.push("/login");
-        return;
+        router.push("/login")
+        return
       }
 
-      console.log(`Workspaceing data for Doctor ID: ${user.role_id}`);
-      fetchDoctorData(user.role_id, token);
+      console.log(`Workspaceing data for Doctor ID: ${user.role_id}`)
+      fetchDoctorData(user.role_id, token)
     } catch (error) {
-      console.error("Error processing user data:", error);
-      localStorage.removeItem("user");
-      localStorage.removeItem("jwt_token");
-      router.push("/login");
+      console.error("Error processing user data:", error)
+      localStorage.removeItem("user")
+      localStorage.removeItem("jwt_token")
+      router.push("/login")
     }
-  }, [router]);
+  }, [router])
 
   const fetchDoctorData = async (doctorId: number, token: string) => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const [fetchedAppointments, fetchedInfo, fetchedPatients] =
-        await Promise.all([
-          getDoctorAppointments(doctorId, token),
-          getDoctorInfo(doctorId, token),
-          getDoctorPatients(doctorId, token),
-        ]);
+      const [fetchedAppointments, fetchedInfo, fetchedPatients] = await Promise.all([
+        getDoctorAppointments(doctorId, token),
+        getDoctorInfo(doctorId, token),
+        getDoctorPatients(doctorId, token),
+      ])
 
-      setAppointments(fetchedAppointments);
-      setDoctorInfo(fetchedInfo);
-      setPatients(fetchedPatients);
+      setAppointments(fetchedAppointments)
+      setDoctorInfo(fetchedInfo)
+      setPatients(fetchedPatients)
     } catch (error) {
-      if (
-        (error as Error).message.includes("401") ||
-        (error as Error).message.includes("Unauthorized")
-      ) {
-        router.push("/login");
+      if ((error as Error).message.includes("401") || (error as Error).message.includes("Unauthorized")) {
+        router.push("/login")
       } else {
-        setAppointments([]);
-        setDoctorInfo(null);
-        setPatients([]);
+        setAppointments([])
+        setDoctorInfo(null)
+        setPatients([])
       }
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return "";
+    if (!dateString) return ""
     try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString();
+      const date = new Date(dateString)
+      return date.toLocaleDateString()
     } catch (e) {
-      return dateString;
+      return dateString
     }
-  };
+  }
 
   const formatTime = (dateString: string) => {
-    if (!dateString) return "";
+    if (!dateString) return ""
     try {
-      const date = new Date(dateString);
+      const date = new Date(dateString)
       return date.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
-      });
+      })
     } catch (e) {
-      return dateString;
+      return dateString
     }
-  };
-
-  const handleUpdateAppointment = (appointment: DoctorAppointment) => {
-    console.log("Update button clicked for appointment:", appointment);
-  };
+  }
 
   if (loading) {
     return (
       <div className="p-4 flex justify-center items-center min-h-screen">
         <p className="text-xl">Verifying doctor access...</p>
       </div>
-    );
+    )
   }
 
   return (
@@ -125,8 +117,7 @@ export default function DoctorDashboard() {
           <h2 className="text-xl font-bold mb-4">Doctor Information</h2>
           <div className="mt-4">
             <p>
-              <strong>Name:</strong>{" "}
-              {doctorInfo?.[0] || userData?.name || "Doctor"}
+              <strong>Name:</strong> {doctorInfo?.[0] || userData?.name || "Doctor"}
             </p>
             <p>
               <strong>Email:</strong> {doctorInfo?.[1] ?? "N/A"}
@@ -156,6 +147,7 @@ export default function DoctorDashboard() {
                   <tr className="border-b-2 border-black">
                     <th className="p-2 text-left">Patient</th>
                     <th className="p-2 text-left">Email</th>
+                    <th className="p-2 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -200,6 +192,7 @@ export default function DoctorDashboard() {
                   <th className="p-2 text-left">Appointment Time</th>
                   <th className="p-2 text-left">Duration (min)</th>
                   <th className="p-2 text-left">Reason</th>
+                  <th className="p-2 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -212,12 +205,12 @@ export default function DoctorDashboard() {
                     <td className="p-2">{appointment[3] ?? "N/A"}</td>
                     <td className="p-2">{appointment[4] || "N/A"}</td>
                     <td className="p-2 text-center">
-                      <button
-                        onClick={() => handleUpdateAppointment(appointment)}
-                        className="border-2 border-black p-1 rounded-lg hover:bg-gray-100 text-sm"
+                      <Link
+                        href={`/appointment_update/${index + 1}`}
+                        className="border-2 border-black p-1 rounded-lg hover:bg-gray-100 text-sm inline-block"
                       >
                         Update
-                      </button>
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -227,5 +220,5 @@ export default function DoctorDashboard() {
         )}
       </div>
     </div>
-  );
+  )
 }
