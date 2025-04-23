@@ -280,6 +280,131 @@ def me(req: Request):
         "role_id": user_data["role_id"]
     }
     
+@app.put("/doctors/update/{doctor_id}")
+def update_doctor_info(data: update_doctor, doctor_id: int):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        try:
+            cur.execute(
+                        """
+                        SELECT user_id 
+                        FROM doctors 
+                        WHERE doctor_id = %s
+                        """, 
+                        (doctor_id,)
+                        )
+            result = cur.fetchone()
+            if not result:
+                return JSONResponse(status_code=404, content={"message": "Doctor not found"})
+            user_id = result["user_id"]
+            time = datetime.now(timezone('US/Eastern'))
+
+            cur.execute(
+                """
+                UPDATE users
+                SET
+                    name = COALESCE(%s, name),
+                    email = COALESCE(%s, email),
+                    phone = COALESCE(%s, phone),
+                    updated_at = %s
+                WHERE user_id = %s;
+                """,
+                (
+                    data.name, 
+                    data.email, 
+                    data.phone, 
+                    time, 
+                    user_id
+                )
+            )
+
+            cur.execute(
+                """
+                UPDATE doctors
+                SET
+                    specialization = COALESCE(%s, specialization),
+                    department = COALESCE(%s, department),
+                    license_number = COALESCE(%s, license_number),
+                    available_from = COALESCE(%s, available_from),
+                    available_to = COALESCE(%s, available_to),
+                    updated_at = %s
+                WHERE doctor_id = %s;
+                """,
+                (
+                    data.specialization, 
+                    data.department, 
+                    data.license_number,
+                    data.available_from, 
+                    data.available_to, 
+                    time, 
+                    doctor_id
+                )
+            )
+
+            conn.commit()
+            return {"message": "Doctor info updated", "doctor_id": doctor_id}
+        except Exception as e:
+            conn.rollback()
+            return JSONResponse(status_code=500, content={"message": f"Update failed: {str(e)}"})    
+    
+@app.put("/patients/update/{patient_id}")
+def update_patient_info(data: update_patient, patient_id: int):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        try:
+            cur.execute("""
+                        SELECT user_id 
+                        FROM patients 
+                        WHERE patient_id = %s
+                        """, 
+                        (patient_id,)
+                        )
+            result = cur.fetchone()
+            if not result:
+                return JSONResponse(status_code=404, content={"message": "Patient not found"})
+            user_id = result["user_id"]
+            time = datetime.now(timezone('US/Eastern'))
+
+            cur.execute(
+                """
+                UPDATE users
+                SET
+                    name = COALESCE(%s, name),
+                    email = COALESCE(%s, email),
+                    phone = COALESCE(%s, phone),
+                    updated_at = %s
+                WHERE user_id = %s;
+                """,
+                (data.name, data.email, data.phone, time, user_id)
+            )
+
+            cur.execute(
+                """
+                UPDATE patients
+                SET
+                    date_of_birth = COALESCE(%s, date_of_birth),
+                    blood_type = COALESCE(%s, blood_type),
+                    insurance_id = COALESCE(%s, insurance_id),
+                    emergency_contact = COALESCE(%s, emergency_contact),
+                    emergency_contact_phone = COALESCE(%s, emergency_contact_phone),
+                    updated_at = %s
+                WHERE patient_id = %s;
+                """,
+                (
+                    data.date_of_birth, 
+                    data.blood_type, 
+                    data.insurance_id,
+                    data.emergency_contact, 
+                    data.emergency_contact_phone,
+                    time, 
+                    patient_id
+                )
+            )
+
+            conn.commit()
+            return {"message": "Patient info sucessfully updated.", "patient_id": patient_id}
+        except Exception as e:
+            conn.rollback()
+            return JSONResponse(status_code=500, content={"message": f"Update failed: {str(e)}"})
+
 # takes in same json as scheduling appointment
 @app.put("/reschedule_appointment/{appointment_id}")
 def reschedule_appointment(data: appointment_details, appointment_id: str):
@@ -535,6 +660,26 @@ def patient_get_medical_records(patient_id: int):
     return results
 
 # Doctor Functionality
+
+@app.get("/doctors/{doctor_id}/info")
+def get_doctor_info(doctor_id: int):
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                u.name,
+                u.email,
+                d.specialization,
+                d.department,
+                d.license_number
+            FROM doctors d
+            JOIN users u ON u.user_id = d.user_id
+            WHERE d.doctor_id = %s;
+            """,
+            (doctor_id,)
+        )
+        results = cur.fetchone()
+    return results
 
 @app.get("/doctors/get_all")
 def get_all_doctors():
