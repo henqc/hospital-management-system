@@ -105,7 +105,6 @@ export default function PatientMedicalHistory() {
       let patientName = "Patient"
       if (patientNameResponse.ok) {
         const nameData = await patientNameResponse.json()
-        console.log(nameData)
         patientName = nameData[7] || "Patient"
       }
 
@@ -253,7 +252,7 @@ export default function PatientMedicalHistory() {
 
                 <div className="mt-4 flex justify-end">
                   <Link
-                    href={`/prescriptions/${record.record_id}`}
+                    href={`/doctor_prescriptions/${record.record_id}`}
                     className="border-2 border-black px-4 py-2 rounded-lg hover:bg-gray-100"
                   >
                     View Prescription

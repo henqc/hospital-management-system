@@ -493,8 +493,7 @@ def reschedule_appointment(data: appointment_details, appointment_id: str):
                 content={"message": f"Appointment update failed: {str(e)}"}
             )
 
-@app.post("/cancel_appointment/{appointment_id}")
-@app.post("/cancel_appointment/{appointment_id}")
+@app.delete("/cancel_appointment/{appointment_id}")
 def cancel_appointment(appointment_id: str):
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         try:
@@ -810,7 +809,8 @@ def get_doctor_appointments(doctor_id: int):
                 u2.name AS doctor_name,
                 a.appointment_date,
                 a.duration,
-                a.reason
+                a.reason,
+                a.appointment_id
             FROM appointments a
             JOIN patients p ON p.patient_id = a.patient_id
             JOIN users u ON u.user_id = p.user_id

@@ -206,7 +206,7 @@ export default function DoctorDashboard() {
                     <td className="p-2">{appointment[4] || "N/A"}</td>
                     <td className="p-2 text-center">
                       <Link
-                        href={`/appointment_update/${index + 1}`}
+                        href={`/appointment_update/${appointment[5]}`}
                         className="border-2 border-black p-1 rounded-lg hover:bg-gray-100 text-sm inline-block"
                       >
                         Update

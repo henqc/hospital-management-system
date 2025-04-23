@@ -2,7 +2,7 @@ export interface Doctor {
   name: string;
   doctor_id: number;
 }
-export type DoctorAppointment = [string, string, string, number, string];
+export type DoctorAppointment = [string, string, string, number, string, number];
 export type DoctorInfo = [string, string, string, string, string];
 export type DoctorPatient = [number, string, string];
 

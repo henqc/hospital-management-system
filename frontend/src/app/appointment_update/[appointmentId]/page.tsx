@@ -148,7 +148,7 @@ export default function AppointmentUpdate() {
       }))
 
       // Check if medical record already exists for this appointment
-      const recordResponse = await fetch(`http://127.0.0.1:8000/doctors/get_medical_records/${appointmentId}`, {
+      const recordResponse = await fetch(`http://127.0.0.1:8000/doctors/get_medical_history/${appointmentId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
