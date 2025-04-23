@@ -182,22 +182,16 @@ export default function PatientDashboard() {
           <h2 className="text-xl font-bold mb-4">Quick Links</h2>
           <div className="flex flex-col gap-2">
             <Link
-              href="#"
+              href="/patient_billing"
               className="border-2 border-black p-2 text-center rounded-lg hover:bg-gray-100"
             >
               Billing
             </Link>
             <Link
-              href="#"
+              href="/patient_medical_history"
               className="border-2 border-black p-2 text-center rounded-lg hover:bg-gray-100"
             >
               Medical History
-            </Link>
-            <Link
-              href="#"
-              className="border-2 border-black p-2 text-center rounded-lg hover:bg-gray-100"
-            >
-              Prescriptions
             </Link>
           </div>
         </div>
@@ -235,19 +229,29 @@ export default function PatientDashboard() {
                     <td className="p-2">{appointment[3] || ""} min</td>
                     <td className="p-2">{appointment[4] || ""}</td>
                     <td className="p-3 text-center">
-                      <button
-                        onClick={() => handleCancelAppointment(appointment[5])}
-                        disabled={cancellingId === appointment[5]}
-                        className={`border px-3 py-1 rounded-md text-xs font-medium transition duration-150 shadow-sm ${
-                          cancellingId === appointment[5]
-                            ? "bg-gray-200 text-gray-500 cursor-not-allowed border-gray-300"
-                            : "border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-50" // Active style
-                        }`}
-                      >
-                        {cancellingId === appointment[5]
-                          ? "Cancelling..."
-                          : "Cancel"}
-                      </button>
+                      <div className="flex justify-center items-center gap-2">
+                        <Link
+                          href={`/edit_appointment/${appointment[5]}`}
+                          className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                        >
+                          Reschedule
+                        </Link>
+                        <button
+                          onClick={() =>
+                            handleCancelAppointment(appointment[5])
+                          }
+                          disabled={cancellingId === appointment[5]}
+                          className={`border px-3 py-1 rounded-md text-xs font-medium transition duration-150 shadow-sm ${
+                            cancellingId === appointment[5]
+                              ? "bg-gray-200 text-gray-500 cursor-not-allowed border-gray-300"
+                              : "border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-50" // Active style
+                          }`}
+                        >
+                          {cancellingId === appointment[5]
+                            ? "Cancelling..."
+                            : "Cancel"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
