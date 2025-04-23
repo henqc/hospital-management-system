@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"
 import {
   getDoctorAppointments,
   type DoctorAppointment,
@@ -163,9 +164,12 @@ export default function DoctorDashboard() {
                       <td className="p-2">{patient[1] || ""}</td>
                       <td className="p-2">{patient[2] || ""}</td>
                       <td className="p-2 text-center">
-                        <button className="border-2 border-black p-1 rounded-lg hover:bg-gray-100 text-sm">
+                        <Link
+                          href={`/doctor_patient_history/${patient[0]}`}
+                          className="border-2 border-black p-1 rounded-lg hover:bg-gray-100 text-sm inline-block"
+                        >
                           History
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   ))}
