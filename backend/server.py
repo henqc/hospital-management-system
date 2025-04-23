@@ -109,6 +109,27 @@ class medical_details(BaseModel):
     end_date: date | None = None
     prescription_notes: str | None = None
 
+class update_patient(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    
+    date_of_birth: str | None = None
+    blood_type: str | None = None
+    insurance_id: str | None = None
+    emergency_contact: str | None = None
+    emergency_contact_phone: str | None = None
+    
+class update_doctor(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    
+    specialization: str | None = None
+    department: str | None = None
+    license_number: str | None = None
+    available_from: str | None = None
+    available_to: str | None = None
     
 # JWT Helper
 def generate_JWT(data: dict):
@@ -754,7 +775,6 @@ def patient_get_medical_records(doctor_id: int):
         results = cur.fetchall()
     return results
 
-# TODO: update to integrate prescriptions
 @app.post("/doctors/add_medical_record/")
 def add_medical_record(data: medical_details):
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -914,7 +934,6 @@ def update_medical_records(data:medical_details, record_id: int):
                             time
                         )
                     )
-
             conn.commit()
             return {"message": "Medical record/Prescription successfully updated.", "record_id": record_id}
         except Exception as e:
