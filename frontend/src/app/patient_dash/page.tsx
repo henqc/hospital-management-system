@@ -3,20 +3,27 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { cancelAppointment } from "@/api/cancel_appointment";
+import {
+  getPatientInfo,
+  getPatientAppointments,
+  type PatientInfo,
+  type PatientAppointment,
+} from "@/api/patient";
 
 export default function PatientDashboard() {
   const router = useRouter();
-  const [patientInfo, setPatientInfo] = useState<any[]>([]);
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
+  const [appointments, setAppointments] = useState<PatientAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     const token = localStorage.getItem("jwt_token");
 
     if (!storedUser || !token) {
-      console.log("No user data or token found");
       router.push("/login");
       return;
     }
@@ -26,70 +33,60 @@ export default function PatientDashboard() {
       setUserData(user);
 
       if (user.role !== "patient") {
-        console.log("User is not a patient");
         router.push("/login");
         return;
       }
 
-      fetchPatientData(user.role_id, token);
+      if (!user.role_id || typeof user.role_id !== "number") {
+        router.push("/login");
+        return;
+      }
+      fetchPatientData(user.role_id, token, true);
     } catch (error) {
-      console.error("Error parsing user data:", error);
+      localStorage.removeItem("user");
+      localStorage.removeItem("jwt_token");
       router.push("/login");
     }
   }, [router]);
 
-  const fetchPatientData = async (patientId: number, token: string) => {
-    console.log("Fetching data for patient ID:", patientId);
+  const fetchPatientData = async (
+    patientId: number,
+    token: string,
+    initialLoad: boolean = false
+  ) => {
+    if (initialLoad) setLoading(true);
 
     try {
-      const infoResponse = await fetch(
-        `http://127.0.0.1:8000/patients/${patientId}/info`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const appointmentsResponse = await fetch(
-        `http://127.0.0.1:8000/patients/${patientId}/appointments`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (infoResponse.ok) {
-        const infoData = await infoResponse.json();
-        console.log("Patient info data:", infoData);
-        setPatientInfo(Array.isArray(infoData) ? infoData : []);
-      } else {
-        console.error(
-          "Failed to fetch patient info:",
-          await infoResponse.text()
-        );
+      const [infoData, appointmentsData] = await Promise.all([
+        getPatientInfo(patientId, token),
+        getPatientAppointments(patientId, token),
+      ]);
+      setPatientInfo(infoData);
+      setAppointments(appointmentsData);
+    } catch (fetchError) {
+      setPatientInfo(null);
+      setAppointments([]);
+      if ((fetchError as Error).message.includes("401")) {
+        router.push("/login");
       }
-
-      if (appointmentsResponse.ok) {
-        const appointmentsData = await appointmentsResponse.json();
-        console.log("Appointments data:", appointmentsData);
-        setAppointments(
-          Array.isArray(appointmentsData) ? appointmentsData : []
-        );
-      } else {
-        console.error(
-          "Failed to fetch appointments:",
-          await appointmentsResponse.text()
-        );
-      }
-    } catch (error) {
-      console.error("Error fetching patient data:", error);
     } finally {
-      setLoading(false);
+      if (initialLoad) setLoading(false);
     }
+  };
+
+  const handleCancelAppointment = async (appointmentId: number) => {
+    const token = localStorage.getItem("jwt_token");
+    if (!userData || !token) {
+      router.push("/login");
+      return;
+    }
+
+    setCancellingId(appointmentId);
+
+    await cancelAppointment(appointmentId, token);
+    await fetchPatientData(userData.role_id, token, false);
+
+    setCancellingId(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -131,13 +128,13 @@ export default function PatientDashboard() {
     );
   }
 
-  const email = patientInfo[0] || "";
-  const phone = patientInfo[1] || "";
-  const dateOfBirth = patientInfo[2] || "";
-  const bloodType = patientInfo[3] || "";
-  const insuranceId = patientInfo[4] || "";
-  const emergencyContact = patientInfo[5] || "";
-  const emergencyContactPhone = patientInfo[6] || "";
+  const email = patientInfo?.[0] ?? "N/A";
+  const phone = patientInfo?.[1] ?? "N/A";
+  const dateOfBirth = patientInfo?.[2] ?? "N/A";
+  const bloodType = patientInfo?.[3] ?? "N/A";
+  const insuranceId = patientInfo?.[4] ?? "N/A";
+  const emergencyContact = patientInfo?.[5] ?? "N/A";
+  const emergencyContactPhone = patientInfo?.[6] ?? "N/A";
 
   return (
     <div className="p-4">
@@ -230,13 +227,28 @@ export default function PatientDashboard() {
               </thead>
               <tbody>
                 {appointments.map((appointment, index) => (
-                  <tr key={index} className="border-b border-black">
+                  <tr key={appointment[5]} className="border-b border-black">
                     <td className="p-2">{appointment[0] || ""}</td>
                     <td className="p-2">{appointment[1] || ""}</td>
                     <td className="p-2">{formatDate(appointment[2] || "")}</td>
                     <td className="p-2">{formatTime(appointment[2] || "")}</td>
                     <td className="p-2">{appointment[3] || ""} min</td>
                     <td className="p-2">{appointment[4] || ""}</td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => handleCancelAppointment(appointment[5])}
+                        disabled={cancellingId === appointment[5]}
+                        className={`border px-3 py-1 rounded-md text-xs font-medium transition duration-150 shadow-sm ${
+                          cancellingId === appointment[5]
+                            ? "bg-gray-200 text-gray-500 cursor-not-allowed border-gray-300"
+                            : "border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-50" // Active style
+                        }`}
+                      >
+                        {cancellingId === appointment[5]
+                          ? "Cancelling..."
+                          : "Cancel"}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
