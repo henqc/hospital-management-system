@@ -301,7 +301,7 @@ def me(req: Request):
         "role_id": user_data["role_id"]
     }
     
-@app.put("/doctors/{doctor_id}")
+@app.put("/doctors/update/{doctor_id}")
 def update_doctor_info(data: update_doctor, doctor_id: int):
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         try:
@@ -367,7 +367,7 @@ def update_doctor_info(data: update_doctor, doctor_id: int):
             conn.rollback()
             return JSONResponse(status_code=500, content={"message": f"Update failed: {str(e)}"})    
     
-@app.put("/patients/{patient_id}")
+@app.put("/patients/update/{patient_id}")
 def update_patient_info(data: update_patient, patient_id: int):
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         try:
@@ -681,6 +681,26 @@ def patient_get_medical_records(patient_id: int):
     return results
 
 # Doctor Functionality
+
+@app.get("/doctors/{doctor_id}/info")
+def get_doctor_info(doctor_id: int):
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                u.name,
+                u.email,
+                d.specialization,
+                d.department,
+                d.license_number
+            FROM doctors d
+            JOIN users u ON u.user_id = d.user_id
+            WHERE d.doctor_id = %s;
+            """,
+            (doctor_id,)
+        )
+        results = cur.fetchone()
+    return results
 
 @app.get("/doctors/get_all")
 def get_all_doctors():
