@@ -50,7 +50,6 @@ export default function PrescriptionDetailsPage() {
         const data = await response.json()
         console.log("Prescription data:", data)
 
-        // The API returns an array with one item
         if (Array.isArray(data) && data.length > 0) {
           setPrescription(data[0])
         } else {

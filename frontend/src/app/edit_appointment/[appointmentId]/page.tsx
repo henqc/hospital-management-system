@@ -45,14 +45,8 @@ export default function EditAppointmentPage() {
 
     try {
       const user = JSON.parse(storedUser)
-
-      // Fetch appointment details
       fetchAppointmentDetails(appointmentId, token)
-
-      // Fetch available doctors
       fetchDoctors()
-
-      // Set patient ID from user data
       setAppointmentData((prev) => ({
         ...prev,
         patient_id: user.role_id,
@@ -76,7 +70,6 @@ export default function EditAppointmentPage() {
         const data = await response.json()
         console.log("Appointment data:", data)
 
-        // Parse the datetime to separate date and time
         const rawDate = data.appointment_date;
       if (!rawDate) {
         setError("Invalid appointment date format.");
