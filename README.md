@@ -54,10 +54,7 @@ npm run dev
 
 ```
 To register new user, navigate to login -> register
-Quick Links on patient dashboard do not currently work
-Register/Login/Logout funcationality works for this iteration
-Read funcationality is the patient dashboard
-Write funcationality is creating new appointments for a user
+Doctors can only be registered through admin
 ```
 
 - To connect to server go to http://localhost:3000
