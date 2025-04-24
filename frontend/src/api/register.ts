@@ -28,3 +28,32 @@ export async function HandleRegistration(userData: RegistrationData) {
 
   return true;
 }
+
+interface DoctorRegistrationData {
+  email: string;
+  password: string;
+  name: string;
+  phone: string;
+  specialization: string;
+  department: string;
+  license_number: string;
+  available_from: string;
+  available_to: string;
+}
+
+export async function HandleDoctorRegistration(userData: DoctorRegistrationData) {
+  const res = await fetch("http://127.0.0.1:8000/register_doctor", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(userData),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Doctor registration failed");
+  }
+
+  return true;
+}

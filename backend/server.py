@@ -1083,3 +1083,139 @@ def get_prescriptions_by_appointment(appointment_id: int):
         )
 
     return results
+
+class doctor_sign_up_data(BaseModel):
+    email: str
+    password: str
+    name: str
+    phone: str
+    specialization: str
+    department: str
+    license_number: str
+    available_from: time
+    available_to: time
+
+@app.post("/register_doctor")
+def register_doctor(data: doctor_sign_up_data):
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            
+            cur.execute(
+                """
+                INSERT INTO users (email, password, name, phone, role)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING user_id;
+                """,
+                (data.email, data.password, data.name, data.phone, 'doctor')
+            )
+            
+            result = cur.fetchone()
+            user_id = result["user_id"]
+            
+            cur.execute(
+                """
+                INSERT INTO doctors (
+                    user_id, specialization, department, license_number,
+                    available_from, available_to
+                )
+                VALUES (%s, %s, %s, %s, %s, %s);
+                """,
+                (
+                    user_id,
+                    data.specialization,
+                    data.department,
+                    data.license_number,
+                    data.available_from,
+                    data.available_to
+                )
+            )
+            
+            conn.commit()
+            
+            return {"message": "Doctor registration successful"}
+            
+    except Exception as e:
+        conn.rollback()
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Doctor registration failed: {str(e)}"}
+        )
+    
+@app.get("/get_billing_details/{bill_id}")
+def get_billing_details(bill_id: int):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        try:
+            cur.execute(
+                """
+                SELECT * 
+                FROM billing_records 
+                WHERE bill_id = %s
+                """,
+                (bill_id,)
+            )
+            result = cur.fetchone()
+            
+            if not result:
+                return JSONResponse(
+                    status_code=404,
+                    content={"message": "Billing record not found"}
+                )
+                
+            return result
+        except Exception as e:
+            return JSONResponse(
+                status_code=500,
+                content={"message": f"Error fetching billing details: {str(e)}"}
+            )
+        
+@app.post("/create_billing/")
+def create_billing(data: billing_details):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        try:
+            date_billed = data.date_billed if data.date_billed else datetime.now(timezone('US/Eastern')).isoformat()
+            
+            payment_status = data.payment_status if data.payment_status else "pending"
+            
+            cur.execute(
+                """
+                INSERT INTO billing_records (
+                    patient_id,
+                    appointment_id,
+                    record_id,
+                    prescription_id,
+                    amount,
+                    tax,
+                    date_billed,
+                    payment_status,
+                    payment_method,
+                    payment_date,
+                    created_at,
+                    updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING bill_id
+                """,
+                (
+                    data.patient_id,
+                    data.appointment_id,
+                    data.record_id,
+                    data.prescription_id,
+                    data.amount,
+                    data.tax,
+                    date_billed,
+                    payment_status,
+                    data.payment_method,
+                    data.payment_date,
+                    datetime.now(timezone('US/Eastern')),
+                    datetime.now(timezone('US/Eastern'))
+                )
+            )
+            conn.commit()
+            bill_id = cur.fetchone()["bill_id"]
+            return {"message": "Bill successfully created.", "bill_id": bill_id}
+        except Exception as e:
+            conn.rollback()
+            return JSONResponse(
+                status_code=500,
+                content={"message": f"Bill creation failed: {str(e)}"}
+            )

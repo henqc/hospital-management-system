@@ -88,7 +88,7 @@ export default function AdminDashboard() {
   };
 
   const handleRegisterDoctorClick = () => {
-    alert("Register New Doctor (Not Implemented)");
+    router.push("/doctor_register");
   };
 
   if (loading) {
@@ -163,8 +163,8 @@ export default function AdminDashboard() {
                     </td>
                     <td className="p-2 text-center">
                       <Link
-                        href={`/admin_billing/${patient.patient_id}`} // Dynamic href using patient_id
-                        className="border-2 border-black p-1 px-3 rounded-lg hover:bg-gray-100 text-sm" // Adjusted style slightly for link
+                        href={`/admin_billing/${patient.patient_id}`}
+                        className="border-2 border-black p-1 px-3 rounded-lg hover:bg-gray-100 text-sm"
                       >
                         Billing
                       </Link>

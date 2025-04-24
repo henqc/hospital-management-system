@@ -106,10 +106,17 @@ export default function AdminPatientBillingPage() {
       case "pending":
         return "bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs";
       case "canceled":
+      case "cancelled":
         return "bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs";
+      case "overdue":
+        return "bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs";
       default:
         return "bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs";
     }
+  };
+
+  const handleEditBill = (billId: number) => {
+    router.push(`/admin_billing/${patientIdForDisplay}/edit/${billId}`);
   };
 
   if (isLoading) {
@@ -134,6 +141,12 @@ export default function AdminPatientBillingPage() {
             Billing Information for Patient ID:{" "}
             {patientDetails?.[7] || patientIdForDisplay}
           </h2>
+          <button
+            onClick={() => router.push(`/admin_billing/${patientIdForDisplay}/add`)}
+            className="border-2 border-black p-2 px-4 rounded-lg hover:bg-gray-100"
+          >
+            Add Bill
+          </button>
         </div>
 
         {billingInfo.length === 0 ? (
@@ -153,6 +166,7 @@ export default function AdminPatientBillingPage() {
                   <th className="p-2 text-center">Status</th>
                   <th className="p-2 text-left">Payment Method</th>
                   <th className="p-2 text-left">Payment Date</th>
+                  <th className="p-2 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -178,6 +192,14 @@ export default function AdminPatientBillingPage() {
                     </td>
                     <td className="p-2">{bill.payment_method || "-"}</td>
                     <td className="p-2">{formatDate(bill.payment_date)}</td>
+                    <td className="p-2 text-center">
+                      <button
+                        onClick={() => handleEditBill(bill.bill_id)}
+                        className="border-2 border-black p-1 px-3 rounded-lg hover:bg-gray-100 text-sm"
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
